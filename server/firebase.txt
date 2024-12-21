@@ -1,0 +1,7 @@
+apiKey: "AIzaSyAIEVoO2t1sM6Axw6jiGo-p3nSriJ18Ugk",
+  authDomain: "mobile-8dc73.firebaseapp.com",
+  projectId: "mobile-8dc73",
+  storageBucket: "mobile-8dc73.firebasestorage.app",
+  messagingSenderId: "606099082795",
+  appId: "1:606099082795:web:14072dd4ad8cee43fce46e",
+  measurementId: "G-4VDZN45TN1"

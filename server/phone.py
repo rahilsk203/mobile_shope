@@ -55,8 +55,8 @@ def verify_auth_key(auth_key):
     user = User.query.filter_by(auth_key=auth_key).first()
     return user is not None
 
-# Manually create tables
-with app.app_context():
+@app.before_first_request
+def create_tables():
     db.create_all()
 
 # User Management APIs
@@ -140,6 +140,8 @@ def view_repairing_products():
     ]
     return jsonify({"repairing_products": product_list}), 200
 
+# Add other APIs (Selling Product, Phone Management) here similarly...
+
 # Selling Product Management APIs
 @app.route('/selling/add', methods=['GET'])
 def add_selling_product():
@@ -152,7 +154,7 @@ def add_selling_product():
     price = request.args.get('price')
     quantity = request.args.get('quantity')
 
-    if not name or not type or not price or not quantity: 
+    if not name or not type or not price or not quantity:
         return jsonify({"message": "All fields are required"}), 400
 
     try:
