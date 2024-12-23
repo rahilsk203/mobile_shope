@@ -46,7 +46,30 @@ class Phone(db.Model):
     price = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), nullable=False)  # Available or Sold Out
     date_added = db.Column(db.DateTime, default=datetime.utcnow)  # New field for date
+    
 
+class RepairingDevice(db.Model):
+    __tablename__ = 'repairingdevice'
+
+    id = db.Column(db.Integer, primary_key=True)
+    customer_name = db.Column(db.String(100), nullable=False)  # Mandatory field
+    phone_number = db.Column(db.String(15), nullable=True, default='N/A')  # Optional with default 'N/A'
+    received_by = db.Column(db.String(50), nullable=True, default='N/A')  # Optional
+    company = db.Column(db.String(100), nullable=True, default='N/A')  # Optional
+    model = db.Column(db.String(100), nullable=True, default='N/A')  # Optional
+    device_condition = db.Column(db.String(100), nullable=True, default='N/A')  # Optional
+    repairing_status = db.Column(db.String(100), nullable=True, default='Pending')  # Optional, default 'Pending'
+    repairing_cost = db.Column(db.Float, nullable=True, default=0.0)  # Optional, default 0.0
+    estimated_delivery_date = db.Column(db.Date, nullable=True)  # Optional
+    parts_replaced = db.Column(db.String(255), nullable=True, default='N/A')  # Optional
+    bill_status = db.Column(db.String(50), nullable=True, default='Unpaid')  # Optional, default 'Unpaid'
+    due_price = db.Column(db.Float, nullable=True, default=0.0)  # Optional, default 0.0
+    advance_payment = db.Column(db.Float, nullable=True, default=0.0)  # Optional, default 0.0
+    payment_method = db.Column(db.String(50), nullable=True, default='N/A')  # Optional
+    delivery_status = db.Column(db.String(50), nullable=True, default='Pending')  # Optional, default 'Pending'
+    technician_name = db.Column(db.String(100), nullable=True, default='N/A')  # Optional
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)  # Auto-filled timestamp
+    
     def update_status(self, is_available):
         self.status = "Available" if is_available else "Sold Out"
 
@@ -399,7 +422,189 @@ def delete_phone():
     db.session.commit()
     return jsonify({"message": f"Phone '{phone.model_name}' deleted successfully"}), 200
     
+
+
+@app.route('/repairingdevice/add', methods=['GET'])
+def add_repairing_device():
+    # Extract parameters from the request, handling empty or missing strings
+    def handle_missing_string(value, default="None"):
+        return value.strip() if value and value.strip() else default
+
+    auth_key = request.args.get('auth_key')
+    customer_name = handle_missing_string(request.args.get('customer_name'), "N/A")
+    phone_number = handle_missing_string(request.args.get('phone_number'), "N/A")
+    received_by = handle_missing_string(request.args.get('received_by'), "N/A")
+    company = handle_missing_string(request.args.get('company'), "N/A")
+    model = handle_missing_string(request.args.get('model'), "N/A")
+    device_condition = handle_missing_string(request.args.get('device_condition'), "N/A")
+    repairing_status = handle_missing_string(request.args.get('repairing_status'), "Pending")
+    parts_replaced = handle_missing_string(request.args.get('parts_replaced'), "N/A")
+    bill_status = handle_missing_string(request.args.get('bill_status'), "Unpaid")
+    payment_method = handle_missing_string(request.args.get('payment_method'), "N/A")
+    delivery_status = handle_missing_string(request.args.get('delivery_status'), "Pending")
+    technician_name = handle_missing_string(request.args.get('technician_name'), "N/A")
+
+    # Handle numeric fields
+    def handle_missing_numeric(value, default=0.0):
+        try:
+            return float(value) if value and value.strip() else default
+        except ValueError:
+            return default
+
+    repairing_cost = handle_missing_numeric(request.args.get('repairing_cost'))
+    due_price = handle_missing_numeric(request.args.get('due_price'))
+    advance_payment = handle_missing_numeric(request.args.get('advance_payment'))
+
+    # Handle date fields
+    estimated_delivery_date = request.args.get('estimated_delivery_date')
+    if estimated_delivery_date:
+        try:
+            estimated_delivery_date = datetime.strptime(estimated_delivery_date, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({"message": "Invalid date format. Use 'YYYY-MM-DD'."}), 400
+
+    # Validate if the user is authorized
+    if not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+
+    # Creating the new repairing device object
+    repairing_device = RepairingDevice(
+        customer_name=customer_name,
+        phone_number=phone_number,
+        received_by=received_by,
+        company=company,
+        model=model,
+        device_condition=device_condition,
+        repairing_status=repairing_status,
+        repairing_cost=repairing_cost,
+        estimated_delivery_date=estimated_delivery_date,
+        parts_replaced=parts_replaced,
+        bill_status=bill_status,
+        due_price=due_price,
+        advance_payment=advance_payment,
+        payment_method=payment_method,
+        delivery_status=delivery_status,
+        technician_name=technician_name,
+    )
+
+    try:
+        db.session.add(repairing_device)
+        db.session.commit()
+        return jsonify({"message": "Repairing device added successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to add repairing device. Error: {str(e)}"}), 500
+        
+@app.route('/repairingdevice/view', methods=['GET'])
+def view_repairing_devices():
+    # Extract auth key from the request
+    auth_key = request.args.get('auth_key')
+
+    # Verify if the user is authorized
+    if not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+
+    # Query all repairing devices from the database
+    repairing_devices = RepairingDevice.query.all()
+
+    # Prepare the list of repairing devices
+    device_list = [
+        {
+            "id": device.id,
+            "customer_name": device.customer_name,
+            "phone_number": device.phone_number,
+            "received_by": device.received_by,
+            "company": device.company,
+            "model": device.model,
+            "device_condition": device.device_condition,
+            "repairing_status": device.repairing_status,
+            "repairing_cost": device.repairing_cost,
+            "estimated_delivery_date": device.estimated_delivery_date,
+            "parts_replaced": device.parts_replaced,
+            "bill_status": device.bill_status,
+            "due_price": device.due_price,
+            "advance_payment": device.advance_payment,
+            "payment_method": device.payment_method,
+            "delivery_status": device.delivery_status,
+            "technician_name": device.technician_name,
+            "date_added": device.date_added
+        }
+        for device in repairing_devices
+    ]
+
+    # Return the list of repairing devices in the response
+    return jsonify({"repairing_devices": device_list}), 200
     
+@app.route('/repairingdevice/delete', methods=['GET'])
+def delete_repairing_device():
+    auth_key = request.args.get('auth_key')
+    if not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+
+    device_id = request.args.get('id')
+    repairing_device = RepairingDevice.query.filter_by(id=device_id).first()
+    if not repairing_device:
+        return jsonify({"message": "Repairing device not found"}), 404
+
+    db.session.delete(repairing_device)
+    db.session.commit()
+    return jsonify({"message": f"Repairing device with ID {device_id} deleted successfully"}), 200
+    
+    
+@app.route('/repairingdevice/edit', methods=['GET'])
+def edit_repairing_device():
+    auth_key = request.args.get('auth_key')
+    if not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+
+    device_id = request.args.get('id')
+    repairing_device = RepairingDevice.query.filter_by(id=device_id).first()
+    if not repairing_device:
+        return jsonify({"message": "Repairing device not found"}), 404
+
+    # Optional fields for editing
+    customer_name = request.args.get('customer_name')
+    phone_number = request.args.get('phone_number')
+    received_by = request.args.get('received_by')
+    company = request.args.get('company')
+    model = request.args.get('model')
+    device_condition = request.args.get('device_condition')
+    repairing_status = request.args.get('repairing_status')
+    repairing_cost = request.args.get('repairing_cost')
+    estimated_delivery_date = request.args.get('estimated_delivery_date')
+    parts_replaced = request.args.get('parts_replaced')
+    bill_status = request.args.get('bill_status')
+    due_price = request.args.get('due_price')
+    advance_payment = request.args.get('advance_payment')
+    payment_method = request.args.get('payment_method')
+    delivery_status = request.args.get('delivery_status')
+    technician_name = request.args.get('technician_name')
+
+    # Update fields if provided
+    if customer_name: repairing_device.customer_name = customer_name
+    if phone_number: repairing_device.phone_number = phone_number
+    if received_by: repairing_device.received_by = received_by
+    if company: repairing_device.company = company
+    if model: repairing_device.model = model
+    if device_condition: repairing_device.device_condition = device_condition
+    if repairing_status: repairing_device.repairing_status = repairing_status
+    if repairing_cost: repairing_device.repairing_cost = repairing_cost
+    if estimated_delivery_date:
+        try:
+            repairing_device.estimated_delivery_date = datetime.strptime(estimated_delivery_date, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({"message": "Invalid date format. Use 'YYYY-MM-DD'."}), 400
+    if parts_replaced: repairing_device.parts_replaced = parts_replaced
+    if bill_status: repairing_device.bill_status = bill_status
+    if due_price: repairing_device.due_price = due_price
+    if advance_payment: repairing_device.advance_payment = advance_payment
+    if payment_method: repairing_device.payment_method = payment_method
+    if delivery_status: repairing_device.delivery_status = delivery_status
+    if technician_name: repairing_device.technician_name = technician_name
+
+    db.session.commit()
+    return jsonify({"message": f"Repairing device with ID {device_id} updated successfully"}), 200
+
 
 # Run the application
 if __name__ == '__main__':
