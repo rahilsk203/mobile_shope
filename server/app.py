@@ -2,9 +2,9 @@ import uuid
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from datetime import datetime, timezone,timedelta
-from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 from pytz import timezone
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Flask app initialization
 app = Flask(__name__)
@@ -23,6 +23,9 @@ class User(db.Model):
     password = db.Column(db.String(100), nullable=False)
     auth_key = db.Column(db.String(100), unique=True, nullable=False)
 
+    def __repr__(self):
+        return f"<User {self.username}>"
+
 class RepairingProduct(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -31,6 +34,8 @@ class RepairingProduct(db.Model):
     model = db.Column(db.String(100), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
 
+    def __repr__(self):
+        return f"<RepairingProduct {self.name}, Type: {self.type}>"
 
 class Phone(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -40,32 +45,35 @@ class Phone(db.Model):
     is_new = db.Column(db.Boolean, nullable=False)
     price = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), nullable=False)  # Available or Sold Out
-    date_added = db.Column(db.DateTime, default=datetime.utcnow)  # New field for date
-    
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)  # Auto-filled timestamp
+
+    def __repr__(self):
+        return f"<Phone {self.model_name}, IMEI: {self.imei}>"
 
 class RepairingDevice(db.Model):
-    __tablename__ = 'repairingdevice'
+    __tablename__ = 'repairing_device'
 
     id = db.Column(db.Integer, primary_key=True)
-    customer_name = db.Column(db.String(100), nullable=False)  # Mandatory field
-    phone_number = db.Column(db.String(15), nullable=True, default='N/A')  # Optional with default 'N/A'
-    received_by = db.Column(db.String(50), nullable=True, default='N/A')  # Optional
-    company = db.Column(db.String(100), nullable=True, default='N/A')  # Optional
-    model = db.Column(db.String(100), nullable=True, default='N/A')  # Optional
-    device_condition = db.Column(db.String(100), nullable=True, default='N/A')  # Optional
-    repairing_status = db.Column(db.String(100), nullable=True, default='Pending')  # Optional, default 'Pending'
-    repairing_cost = db.Column(db.Float, nullable=True, default=0.0)  # Optional, default 0.0
-    estimated_delivery_date = db.Column(db.Date, nullable=True)  # Optional
-    parts_replaced = db.Column(db.String(255), nullable=True, default='N/A')  # Optional
-    bill_status = db.Column(db.String(50), nullable=True, default='Unpaid')  # Optional, default 'Unpaid'
-    due_price = db.Column(db.Float, nullable=True, default=0.0)  # Optional, default 0.0
-    advance_payment = db.Column(db.Float, nullable=True, default=0.0)  # Optional, default 0.0
-    payment_method = db.Column(db.String(50), nullable=True, default='N/A')  # Optional
-    delivery_status = db.Column(db.String(50), nullable=True, default='Pending')  # Optional, default 'Pending'
-    technician_name = db.Column(db.String(100), nullable=True, default='N/A')  # Optional
-    date_added = db.Column(db.DateTime, default=datetime.utcnow)  # Auto-filled timestamp
-    
+    customer_name = db.Column(db.String(100), nullable=False)
+    phone_number = db.Column(db.String(15), default='N/A')
+    received_by = db.Column(db.String(50), default='N/A')
+    company = db.Column(db.String(100), default='N/A')
+    model = db.Column(db.String(100), default='N/A')
+    device_condition = db.Column(db.String(100), default='N/A')
+    repairing_status = db.Column(db.String(100), default='Pending')
+    repairing_cost = db.Column(db.Float, default=0.0)
+    estimated_delivery_date = db.Column(db.Date, nullable=True)
+    parts_replaced = db.Column(db.String(255), default='N/A')
+    bill_status = db.Column(db.String(50), default='Unpaid')
+    due_price = db.Column(db.Float, default=0.0)
+    advance_payment = db.Column(db.Float, default=0.0)
+    payment_method = db.Column(db.String(50), default='N/A')
+    delivery_status = db.Column(db.String(50), default='Pending')
+    technician_name = db.Column(db.String(100), default='N/A')
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
 
+    def __repr__(self):
+        return f"<RepairingDevice {self.customer_name}, Status: {self.repairing_status}>"
 
 class Accessory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -80,8 +88,11 @@ class Accessory(db.Model):
     last_purchase_quantity = db.Column(db.Integer, default=0)
     times_sold = db.Column(db.Integer, default=0)
     stock_out = db.Column(db.Integer, default=0)
-    add_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    add_date = db.Column(db.DateTime, default=datetime.utcnow)
     last_purchase_date = db.Column(db.DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<Accessory {self.accessory_name}, Stock: {self.added_stock}>"
 
     @property
     def as_dict(self):
@@ -101,18 +112,56 @@ class Accessory(db.Model):
             "add_date": self.add_date.isoformat(),
             "last_purchase_date": self.last_purchase_date.isoformat() if self.last_purchase_date else None,
         }
+        
+class RepairingAccessory(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)  # Change to Integer with autoincrement
+    name = db.Column(db.String(100))
+    type = db.Column(db.String(100))
+    repairing_cost = db.Column(db.Float)
+    selling_cost = db.Column(db.Float)
+    current_stock = db.Column(db.Integer)
+    add_stock = db.Column(db.Integer, default=0)
+    last_purchase_quantity = db.Column(db.Integer, default=0)
+    last_repairing_quantity = db.Column(db.Integer, default=0)
+    total_out_stock = db.Column(db.Integer, default=0)
+    last_purchase_date = db.Column(db.DateTime)
+    last_repairing_date = db.Column(db.DateTime)
+    minimum_stock = db.Column(db.Integer, default=0)
+    alert = db.Column(db.Boolean, default=False)
+    company = db.Column(db.String(100))
+    model = db.Column(db.String(100))
+    
+    
+    def __repr__(self):
+        return f"<RepairingAccessory {self.name}, Stock: {self.current_stock}>"
 
-
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "type": self.type,
+            "repairing_cost": self.repairing_cost,
+            "selling_cost": self.selling_cost,
+            "current_stock": self.current_stock,
+            "add_stock": self.add_stock,
+            "last_purchase_quantity": self.last_purchase_quantity,
+            "last_repairing_quantity": self.last_repairing_quantity,
+            "total_out_stock": self.total_out_stock,
+            "last_purchase_date": self.last_purchase_date.isoformat() if self.last_purchase_date else None,
+            "minimum_stock": self.minimum_stock,
+            "last_repairing_date": self.last_repairing_date.isoformat() if self.last_repairing_date else None,
+            "alert": self.alert,
+            "company": self.company,
+            "model": self.model
+        }
 
 # Utility function to verify auth key
 def verify_auth_key(auth_key):
-    user = User.query.filter_by(auth_key=auth_key).first()
-    return user is not None
+    return User.query.filter_by(auth_key=auth_key).first() is not None
 
 # Manually create tables
 with app.app_context():
     db.create_all()
-
 
 
 # User Management APIs
@@ -292,29 +341,124 @@ def manage_accessory():
         db.session.rollback()
         return jsonify({"error": f"Error occurred: {str(e)}"}), 500
 
-    
-@app.route('/repairing/view', methods=['GET'])
-def view_repairing_products():
+@app.route('/repairing_accessory', methods=['GET'])
+def manage_repairing_accessory():
     auth_key = request.args.get('auth_key')
     if not verify_auth_key(auth_key):
         return jsonify({"message": "Unauthorized access"}), 403
 
-    products = RepairingProduct.query.all()
-    product_list = [
-        {
-            "id": product.id,
-            "name": product.name,
-            "type": product.type,
-            "company": product.company,
-            "model": product.model,
-            "quantity": product.quantity
-        }
-        for product in products
-    ]
-    return jsonify({"repairing_products": product_list}), 200
+    action = request.args.get('action')
+    try:
+        india_tz = timezone('Asia/Kolkata')
+        current_time_ist = datetime.now(india_tz)
 
-# Selling Product Management APIs
+        if action == "add":
+            # Adding a new repairing accessory
+            name = request.args.get('name')
+            type_ = request.args.get('type')
+            company = request.args.get('company')
+            model = request.args.get('model')
 
+            existing_accessory = RepairingAccessory.query.filter_by(
+                name=name, type=type_, company=company, model=model
+            ).first()
+
+            if existing_accessory:
+                return jsonify({"message": "Repairing accessory already exists."}), 400
+
+            new_accessory = RepairingAccessory(
+                name=name,
+                type=type_,
+                repairing_cost=float(request.args.get('repairing_cost', 0.0)),
+                selling_cost=float(request.args.get('selling_cost', 0.0)),
+                current_stock=int(request.args.get('current_stock', 0)),
+                add_stock=int(request.args.get('current_stock', 0)),
+                minimum_stock=int(request.args.get('minimum_stock', 0)),
+                alert=False,
+                company=company,
+                model=model
+            )
+            db.session.add(new_accessory)
+            db.session.commit()
+            return jsonify({
+                "message": "Repairing accessory added successfully",
+                "add_date": current_time_ist.isoformat()
+            }), 201
+
+        elif action == "update":
+            # Updating an existing repairing accessory
+            accessory_id = request.args.get('id')
+            accessory = RepairingAccessory.query.get(accessory_id)
+            if not accessory:
+                return jsonify({"message": "Repairing accessory not found"}), 404
+
+            add_stock = int(request.args.get('add_stock', 0))
+            last_purchase_quantity = int(request.args.get('last_purchase_quantity', 0))
+            last_repairing_quantity = int(request.args.get('last_repairing_quantity', 0))
+
+            if add_stock > 0:
+                accessory.current_stock += add_stock
+                accessory.add_stock += add_stock
+
+            if last_purchase_quantity > 0:
+                accessory.last_purchase_quantity = last_purchase_quantity
+                accessory.current_stock -= last_purchase_quantity
+                accessory.total_out_stock += last_purchase_quantity
+                accessory.last_purchase_date = current_time_ist
+
+            if last_repairing_quantity > 0:
+                accessory.last_repairing_quantity = last_repairing_quantity
+                accessory.current_stock -= last_repairing_quantity
+                accessory.total_out_stock += last_repairing_quantity
+                accessory.last_repairing_date = current_time_ist
+
+            accessory.repairing_cost = float(request.args.get('repairing_cost', accessory.repairing_cost))
+            accessory.selling_cost = float(request.args.get('selling_cost', accessory.selling_cost))
+
+            accessory.alert = accessory.current_stock < accessory.minimum_stock
+
+            db.session.commit()
+
+            return jsonify({
+                "message": f"Repairing accessory '{accessory.name}' updated successfully",
+                **accessory.to_dict()
+            }), 200
+
+        elif action == "delete":
+            # Deleting an existing repairing accessory
+            accessory_id = request.args.get('id')
+            accessory = RepairingAccessory.query.get(accessory_id)
+            if not accessory:
+                return jsonify({"message": "Repairing accessory not found"}), 404
+
+            db.session.delete(accessory)
+            db.session.commit()
+            return jsonify({"message": f"Repairing accessory with ID {accessory_id} deleted successfully"}), 200
+
+        elif action == "view":
+            # Viewing one or all repairing accessories
+            accessory_id = request.args.get('id')
+            if accessory_id:
+                accessory = RepairingAccessory.query.get(accessory_id)
+                if not accessory:
+                    return jsonify({"message": "Repairing accessory not found"}), 404
+
+                return jsonify(accessory.to_dict()), 200
+            else:
+                accessories = RepairingAccessory.query.all()
+                return jsonify({
+                    "repairing_accessories": [accessory.to_dict() for accessory in accessories]
+                }), 200
+
+        else:
+            return jsonify({"message": "Invalid action specified"}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Error occurred: {str(e)}"}), 500
+        
+        
+        
 @app.route('/phone/add', methods=['GET'])
 def add_phone():
     auth_key = request.args.get('auth_key')
@@ -376,51 +520,7 @@ def view_phones():
     return jsonify({"phones": phone_list}), 200
 
     
-# ----- Repairing Product Management -----
-@app.route('/repairing/edit', methods=['GET'])
-def edit_repairing_product():
-    auth_key = request.args.get('auth_key')
-    if not verify_auth_key(auth_key):
-        return jsonify({"message": "Unauthorized access"}), 403
 
-    product_id = request.args.get('id')
-    name = request.args.get('name')
-    type = request.args.get('type')
-    company = request.args.get('company')
-    model = request.args.get('model')
-    quantity = request.args.get('quantity')
-
-    product = RepairingProduct.query.filter_by(id=product_id).first()
-    if not product:
-        return jsonify({"message": "Product not found"}), 404
-
-    if name: product.name = name
-    if type: product.type = type
-    if company: product.company = company
-    if model: product.model = model
-    if quantity:
-        try:
-            product.quantity = int(quantity)
-        except ValueError:
-            return jsonify({"message": "Quantity must be an integer"}), 400
-
-    db.session.commit()
-    return jsonify({"message": f"Repairing product '{product.name}' updated successfully"}), 200
-
-@app.route('/repairing/delete', methods=['GET'])
-def delete_repairing_product():
-    auth_key = request.args.get('auth_key')
-    if not verify_auth_key(auth_key):
-        return jsonify({"message": "Unauthorized access"}), 403
-
-    product_id = request.args.get('id')
-    product = RepairingProduct.query.filter_by(id=product_id).first()
-    if not product:
-        return jsonify({"message": "Product not found"}), 404
-
-    db.session.delete(product)
-    db.session.commit()
-    return jsonify({"message": f"Repairing product '{product.name}' deleted successfully"}), 200
 
 # ----- Selling Product Management -----
 @app.route('/selling/edit', methods=['GET'])
