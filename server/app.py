@@ -36,7 +36,8 @@ class RepairingProduct(db.Model):
 
     def __repr__(self):
         return f"<RepairingProduct {self.name}, Type: {self.type}>"
-
+        
+        
 class Phone(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     imei = db.Column(db.String(15), unique=True, nullable=False)
@@ -44,37 +45,18 @@ class Phone(db.Model):
     company = db.Column(db.String(100), nullable=False)
     is_new = db.Column(db.Boolean, nullable=False)
     price = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), nullable=False)  # Available or Sold Out
+    status = db.Column(db.String(20), nullable=False)  # "Available" or "Sold Out"
     date_added = db.Column(db.DateTime, default=datetime.utcnow)  # Auto-filled timestamp
 
     def __repr__(self):
         return f"<Phone {self.model_name}, IMEI: {self.imei}>"
 
-class RepairingDevice(db.Model):
-    __tablename__ = 'repairing_device'
+    # Method to update phone status
+    def update_status(self, is_available):
+        self.status = "Available" if is_available else "Sold Out"
+        
 
-    id = db.Column(db.Integer, primary_key=True)
-    customer_name = db.Column(db.String(100), nullable=False)
-    phone_number = db.Column(db.String(15), default='N/A')
-    received_by = db.Column(db.String(50), default='N/A')
-    company = db.Column(db.String(100), default='N/A')
-    model = db.Column(db.String(100), default='N/A')
-    device_condition = db.Column(db.String(100), default='N/A')
-    repairing_status = db.Column(db.String(100), default='Pending')
-    repairing_cost = db.Column(db.Float, default=0.0)
-    estimated_delivery_date = db.Column(db.Date, nullable=True)
-    parts_replaced = db.Column(db.String(255), default='N/A')
-    bill_status = db.Column(db.String(50), default='Unpaid')
-    due_price = db.Column(db.Float, default=0.0)
-    advance_payment = db.Column(db.Float, default=0.0)
-    payment_method = db.Column(db.String(50), default='N/A')
-    delivery_status = db.Column(db.String(50), default='Pending')
-    technician_name = db.Column(db.String(100), default='N/A')
-    date_added = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def __repr__(self):
-        return f"<RepairingDevice {self.customer_name}, Status: {self.repairing_status}>"
-
+        
 class Accessory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     accessory_name = db.Column(db.String(100), nullable=False)
@@ -112,6 +94,7 @@ class Accessory(db.Model):
             "add_date": self.add_date.isoformat(),
             "last_purchase_date": self.last_purchase_date.isoformat() if self.last_purchase_date else None,
         }
+        
         
 class RepairingAccessory(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)  # Change to Integer with autoincrement
@@ -153,7 +136,183 @@ class RepairingAccessory(db.Model):
             "alert": self.alert,
             "company": self.company,
             "model": self.model
+        }        
+        
+        
+        
+class RepairingDevice(db.Model):
+    __tablename__ = 'repairing_device'
+
+    id = db.Column(db.Integer, primary_key=True)
+    customer_name = db.Column(db.String(100), nullable=False)
+    phone_number = db.Column(db.String(15), default='N/A')
+    received_by = db.Column(db.String(50), default='N/A')
+    company = db.Column(db.String(100), default='N/A')
+    model = db.Column(db.String(100), default='N/A')
+    device_condition = db.Column(db.String(100), default='N/A')
+    repairing_status = db.Column(db.String(100), default='Pending')
+    repairing_cost = db.Column(db.Float, default=0.0)
+    estimated_delivery_date = db.Column(db.Date, nullable=True)
+    parts_replaced = db.Column(db.String(255), default='N/A')
+    bill_status = db.Column(db.String(50), default='Unpaid')
+    due_price = db.Column(db.Float, default=0.0)
+    advance_payment = db.Column(db.Float, default=0.0)
+    payment_method = db.Column(db.String(50), default='N/A')
+    delivery_status = db.Column(db.String(50), default='Pending')
+    technician_name = db.Column(db.String(100), default='N/A')
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<RepairingDevice {self.customer_name}, Status: {self.repairing_status}>"
+
+
+class RepairingInvoice(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.String(100), nullable=False, unique=True)
+    repairing_device_id = db.Column(db.Integer, db.ForeignKey('repairing_device.id'), nullable=False)
+    shop_id = db.Column(db.Integer, db.ForeignKey('shop.id'), nullable=False)
+    customer_name = db.Column(db.String(100), nullable=False)
+    repairing_cost = db.Column(db.Float, default=0.0)
+    advance_payment = db.Column(db.Float, default=0.0)
+    due_price = db.Column(db.Float, default=0.0)
+    bill_status = db.Column(db.String(50), default='Unpaid')
+    payment_method = db.Column(db.String(50), default='N/A')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    repairing_device = db.relationship('RepairingDevice', backref='repairing_invoices', lazy=True)
+    shop = db.relationship('Shop', backref='repairing_invoice_history', lazy=True)
+
+    def __repr__(self):
+        return f"<RepairingInvoice {self.invoice_id}>"
+    
+
+# Models
+class Shop(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    address = db.Column(db.String(200), nullable=False)
+    phone = db.Column(db.String(15), nullable=False)
+    email = db.Column(db.String(100), nullable=True)
+
+    def __repr__(self):
+        return f"<Shop {self.name}>"
+        
+class Invoice(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    customer_name = db.Column(db.String(100), nullable=False)
+    customer_phone = db.Column(db.String(15), nullable=False)
+    customer_location = db.Column(db.String(200), nullable=False)
+    phone_id = db.Column(db.Integer, db.ForeignKey('phone.id'), nullable=False)
+    shop_id = db.Column(db.Integer, db.ForeignKey('shop.id'), nullable=False)
+    total_amount = db.Column(db.Float, nullable=False)
+    paid_amount = db.Column(db.Float, default=0.0)
+    date_created = db.Column(db.DateTime, default=datetime.utcnow)
+
+    shop = db.relationship('Shop', backref='invoices')
+    phone = db.relationship('Phone', backref='invoices')
+
+    def __repr__(self):
+        return f"<Invoice {self.id} - {self.customer_name}>"
+
+    @property
+    def due_amount(self):
+        # Calculate due amount dynamically
+        return self.total_amount - self.paid_amount
+
+    def update_paid_amount(self, payment):
+        """Update the paid amount and reflect changes in due_amount."""
+        self.paid_amount += payment
+        db.session.commit()
+
+class Due(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=False)
+    phone_model = db.Column(db.String(100), nullable=False)
+    customer_name = db.Column(db.String(100), nullable=False)
+    paid_amount = db.Column(db.Float, nullable=False)
+    payment_date = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship with the Invoice
+    invoice = db.relationship('Invoice', backref='dues')
+
+    def __repr__(self):
+        return f"<Due {self.id} - {self.phone_model}>"
+
+    def add_payment(self, payment):
+        # Update the paid_amount for the Due record
+        self.paid_amount += payment
+        self.payment_date = datetime.utcnow()  # Set the payment date to the current time
+        db.session.commit()
+
+        # Update the corresponding Invoice's due amount
+        invoice = Invoice.query.get(self.invoice_id)
+        invoice.update_due(payment)
+
+class InvoiceHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=False)
+    customer_name = db.Column(db.String(100), nullable=False)
+    customer_phone = db.Column(db.String(15), nullable=False)
+    customer_location = db.Column(db.String(200), nullable=False)
+    total_paid = db.Column(db.Float, nullable=False)
+    total_due = db.Column(db.Float, nullable=False)
+    total_amount = db.Column(db.Float, nullable=False)
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship with Invoice
+    invoice = db.relationship('Invoice', backref='history')
+
+    def __repr__(self):
+        return f"<InvoiceHistory {self.id} - {self.invoice_id}>"
+ 
+
+
+
+    
+    def __repr__(self):
+        return f"<RepairingAccessory {self.name}, Stock: {self.current_stock}>"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "type": self.type,
+            "repairing_cost": self.repairing_cost,
+            "selling_cost": self.selling_cost,
+            "current_stock": self.current_stock,
+            "add_stock": self.add_stock,
+            "last_purchase_quantity": self.last_purchase_quantity,
+            "last_repairing_quantity": self.last_repairing_quantity,
+            "total_out_stock": self.total_out_stock,
+            "last_purchase_date": self.last_purchase_date.isoformat() if self.last_purchase_date else None,
+            "minimum_stock": self.minimum_stock,
+            "last_repairing_date": self.last_repairing_date.isoformat() if self.last_repairing_date else None,
+            "alert": self.alert,
+            "company": self.company,
+            "model": self.model
         }
+        
+        
+class AccessorieInvoice(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.String(36), nullable=False, unique=True)  # UUID
+    user_name = db.Column(db.String(100), nullable=False)
+    user_phone = db.Column(db.String(15), nullable=False)
+    accessory_name = db.Column(db.String(100), nullable=False)
+    company = db.Column(db.String(50), nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    unit_price = db.Column(db.Float, nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    total_price = db.Column(db.Float, nullable=False)
+    shop_name = db.Column(db.String(100), nullable=False)
+    shop_address = db.Column(db.String(200), nullable=False)
+    shop_phone = db.Column(db.String(15), nullable=False)
+    shop_email = db.Column(db.String(100), nullable=True)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Invoice {self.invoice_id}>"
 
 # Utility function to verify auth key
 def verify_auth_key(auth_key):
@@ -701,6 +860,7 @@ def add_repairing_device():
         db.session.rollback()
         return jsonify({"error": f"Failed to add repairing device. Error: {str(e)}"}), 500
         
+        
 @app.route('/repairingdevice/view', methods=['GET'])
 def view_repairing_devices():
     # Extract auth key from the request
@@ -811,6 +971,494 @@ def edit_repairing_device():
     db.session.commit()
     return jsonify({"message": f"Repairing device with ID {device_id} updated successfully"}), 200
 
+
+@app.route('/add_shop', methods=['GET'])
+def add_shop():
+    auth_key = request.args.get('auth_key')
+    if not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+
+    name = request.args.get('name')
+    address = request.args.get('address')
+    phone = request.args.get('phone')
+    email = request.args.get('email')
+
+    if not name or not address or not phone:
+        return jsonify({'error': 'Name, address, and phone are required'}), 400
+
+    shop = Shop(name=name, address=address, phone=phone, email=email)
+    db.session.add(shop)
+    db.session.commit()
+
+    return jsonify({'message': 'Shop added successfully', 'shop_id': shop.id}), 200
+    
+    
+@app.route('/generate_invoice', methods=['GET'])
+def generate_invoice():
+    auth_key = request.args.get('auth_key')
+    if not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+        
+    user_name = request.args.get('name')
+    user_phone = request.args.get('phone')
+    user_location = request.args.get('location')
+    imei = request.args.get('imei')
+    shop_id = request.args.get('shop_id')  # Shop ID provided by the user
+    paid_amount = float(request.args.get('paid_amount', 0.0))
+
+    # Validate shop
+    shop = Shop.query.filter_by(id=shop_id).first()
+    if not shop:
+        return jsonify({'error': 'Shop not found'}), 404
+
+    # Find phone details by IMEI
+    phone = Phone.query.filter_by(imei=imei).first()
+    if not phone:
+        return jsonify({'error': 'Phone with given IMEI not found'}), 404
+
+    # Check if phone is already sold
+    if phone.status == "Sold Out":
+        return jsonify({'error': 'Phone is already sold out'}), 400
+
+    total_amount = phone.price
+    due_amount = total_amount - paid_amount
+
+    # Create Invoice
+    invoice = Invoice(
+    customer_name=user_name,
+    customer_phone=user_phone,
+    customer_location=user_location,
+    phone_id=phone.id,
+    shop_id=shop.id,
+    total_amount=total_amount,
+    paid_amount=paid_amount,
+)
+    db.session.add(invoice)
+    db.session.commit()  # Commit to get the invoice_id
+
+    # Add Initial Due Record (Make sure invoice_id is available)
+    due = Due(
+        invoice_id=invoice.id,
+        phone_model=phone.model_name,
+        customer_name=user_name,
+        paid_amount=paid_amount,
+        payment_date=datetime.utcnow()  # Set payment_date as current time
+    )
+    db.session.add(due)
+
+    # Add Invoice History
+    invoice_history = InvoiceHistory(
+        invoice_id=invoice.id,
+        customer_name=user_name,
+        customer_phone=user_phone,
+        customer_location=user_location,
+        total_paid=paid_amount,
+        total_due=due_amount,
+        total_amount=total_amount
+    )
+    db.session.add(invoice_history)
+
+    # Update phone status to "Sold Out"
+    phone.update_status(False)
+    db.session.commit()
+
+    # Fetch the created invoice details
+    invoice_details = {
+        'invoice_id': invoice.id,
+        'customer_name': invoice.customer_name,
+        'customer_phone': invoice.customer_phone,
+        'customer_location': invoice.customer_location,
+        'total_amount': invoice.total_amount,
+        'paid_amount': invoice.paid_amount,
+        'due_amount': invoice.due_amount,
+        'date_created': invoice.date_created.strftime('%Y-%m-%d %H:%M:%S'),
+        'phone': {
+            'model_name': phone.model_name,
+            'company': phone.company,
+            'imei': phone.imei,
+            'price': phone.price
+        },
+        'shop': {
+            'name': shop.name,
+            'address': shop.address,
+            'phone': shop.phone,
+            'email': shop.email
+        },
+        'due': {
+            'phone_model': due.phone_model,
+            'customer_name': due.customer_name,
+            'paid_amount': due.paid_amount,
+            'payment_date': due.payment_date.strftime('%Y-%m-%d %H:%M:%S')  # Format payment_date
+        },
+        'invoice_history': {
+            'total_paid': invoice_history.total_paid,
+            'total_due': invoice_history.total_due,
+            'total_amount': invoice_history.total_amount,
+            'last_updated': invoice_history.last_updated.strftime('%Y-%m-%d %H:%M:%S')  # Format last_updated
+        }
+    }
+
+    return jsonify({
+        'message': 'Invoice created successfully',
+        'invoice_details': invoice_details
+    }), 200
+ 
+@app.route('/add_payment', methods=['GET'])
+def add_payment():
+    auth_key = request.args.get('auth_key')
+    if not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+
+    invoice_id = request.args.get('invoice_id')
+    payment = float(request.args.get('payment', 0.0))
+
+    # Fetch invoice
+    invoice = Invoice.query.filter_by(id=invoice_id).first()
+    if not invoice:
+        return jsonify({'error': 'Invoice not found'}), 404
+
+    # Validate payment
+    if payment <= 0:
+        return jsonify({'error': 'Payment must be greater than 0'}), 400
+    if payment > invoice.due_amount:
+        return jsonify({'error': 'Payment exceeds due amount'}), 400
+
+    # Update invoice payment
+    invoice.update_paid_amount(payment)
+
+    # Log the payment in Due table
+    due = Due(
+        invoice_id=invoice.id,
+        phone_model=invoice.phone.model_name,
+        customer_name=invoice.customer_name,
+        paid_amount=payment,
+        payment_date=datetime.utcnow()
+    )
+    db.session.add(due)
+
+    # Update InvoiceHistory
+    invoice_history = InvoiceHistory.query.filter_by(invoice_id=invoice_id).first()
+    if invoice_history:
+        invoice_history.total_paid += payment
+        invoice_history.total_due = invoice.due_amount
+
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Payment added successfully',
+        'remaining_due': invoice.due_amount
+    }), 200
+
+@app.route('/invoice_history', methods=['GET'])
+def invoice_history():
+    auth_key = request.args.get('auth_key')
+    if not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+
+    invoices = Invoice.query.all()  # Fetch all invoices
+    result = []
+    for invoice in invoices:
+        # Fetch the corresponding phone
+        phone = Phone.query.filter_by(id=invoice.phone_id).first()
+        if not phone:
+            continue
+
+        # Fetch the corresponding shop
+        shop = Shop.query.filter_by(id=invoice.shop_id).first()
+        if not shop:
+            continue
+
+        # Fetch the corresponding invoice history
+        history = InvoiceHistory.query.filter_by(invoice_id=invoice.id).first()
+        if not history:
+            continue
+
+        # Fetch all dues for this invoice
+        due = Due.query.filter_by(invoice_id=invoice.id).all()
+
+        # Add details to the result
+        result.append({
+            'invoice_id': invoice.id,
+            'customer_name': invoice.customer_name,
+            'customer_phone': invoice.customer_phone,
+            'customer_location': invoice.customer_location,
+            'total_paid': invoice.paid_amount,
+            'total_due': invoice.due_amount,
+            'total_amount': invoice.total_amount,
+            'date_created': invoice.date_created.strftime('%Y-%m-%d %H:%M:%S'),
+            'phone_details': {
+                'model_name': phone.model_name,
+                'company': phone.company,
+                'imei': phone.imei,
+                'price': phone.price,
+                'status': phone.status,
+                'is_new': phone.is_new,
+                'date_added': phone.date_added.strftime('%Y-%m-%d %H:%M:%S')
+            },
+            'shop_details': {
+                'name': shop.name,
+                'address': shop.address,
+                'phone': shop.phone,
+                'email': shop.email
+            },
+            'invoice_history': {
+                'invoice_id': history.invoice_id,
+                'customer_name': history.customer_name,
+                'customer_phone': history.customer_phone,
+                'customer_location': history.customer_location,
+                'total_paid': history.total_paid,
+                'total_due': history.total_due,
+                'total_amount': history.total_amount,
+                'last_updated': history.last_updated.strftime('%Y-%m-%d %H:%M:%S')
+            },
+            'due_details': [
+                {
+                    'phone_model': due_item.phone_model,
+                    'customer_name': due_item.customer_name,
+                    'paid_amount': due_item.paid_amount,
+                    'payment_date': due_item.payment_date.strftime('%Y-%m-%d %H:%M:%S')
+                }
+                for due_item in due
+            ]
+        })
+
+    return jsonify({'invoice_history': result}), 200
+    
+    
+
+
+@app.route('/repairingdevice/invoice', methods=['GET'])
+def generate_and_save_invoice():
+    auth_key = request.args.get('auth_key')
+    if not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+
+    device_id = request.args.get('id')
+    shop_id = request.args.get('shop_id')
+
+    # Get the repairing device
+    repairing_device = RepairingDevice.query.filter_by(id=device_id).first()
+    if not repairing_device:
+        return jsonify({"message": "Repairing device not found"}), 404
+
+    # Get the shop details
+    shop = Shop.query.filter_by(id=shop_id).first()
+    if not shop:
+        return jsonify({"message": "Shop not found"}), 404
+
+    # Generate unique invoice ID
+    india_tz = timezone('Asia/Kolkata')
+    current_time_ist = datetime.now(india_tz)
+    
+    invoice_id = f"INV-{device_id}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+
+    # Automatically save the invoice to history
+    new_invoice = RepairingInvoice(
+        invoice_id=invoice_id,
+        repairing_device_id=device_id,
+        shop_id=shop.id,
+        customer_name=repairing_device.customer_name,
+        repairing_cost=repairing_device.repairing_cost,
+        advance_payment=repairing_device.advance_payment,
+        due_price=repairing_device.due_price,
+        bill_status=repairing_device.bill_status,
+        payment_method=repairing_device.payment_method,
+    )
+
+    try:
+        # Save the invoice history
+        db.session.add(new_invoice)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to save invoice history. Error: {str(e)}"}), 500
+
+    # Convert and format date_added field to IST
+    date_added_ist = repairing_device.date_added.astimezone(india_tz).strftime('%Y-%m-%d %H:%M:%S')
+
+    # Full invoice details
+    invoice_details = {
+        "invoice_id": invoice_id,
+        "repairing_device_id": repairing_device.id,
+        "customer_name": repairing_device.customer_name,
+        "phone_number": repairing_device.phone_number,
+        "company": repairing_device.company,
+        "model": repairing_device.model,
+        "device_condition": repairing_device.device_condition,
+        "repairing_status": repairing_device.repairing_status,
+        "repairing_cost": repairing_device.repairing_cost,
+        "advance_payment": repairing_device.advance_payment,
+        "due_price": repairing_device.due_price,
+        "bill_status": repairing_device.bill_status,
+        "payment_method": repairing_device.payment_method,
+        "delivery_status": repairing_device.delivery_status,
+        "technician_name": repairing_device.technician_name,
+        "estimated_delivery_date": repairing_device.estimated_delivery_date.strftime('%Y-%m-%d') if repairing_device.estimated_delivery_date else None,
+        "date_added": date_added_ist,  # Date in IST formatted as string
+        "shop_details": {
+            "shop_id": shop.id,
+            "shop_name": shop.name,
+            "shop_address": shop.address,
+            "shop_phone": shop.phone,
+            "shop_email": shop.email,
+        }
+    }
+
+    # Return the full invoice details as JSON
+    return jsonify({"message": "Invoice generated and saved successfully", "invoice_details": invoice_details}), 200
+    
+    
+@app.route('/repairinginvoice/history', methods=['GET'])
+def view_repairing_invoice_history():
+    auth_key = request.args.get('auth_key')
+    if not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+
+    # Fetch all invoices from the database
+    invoices = RepairingInvoice.query.all()
+
+    # Prepare the list of invoices with related details
+    invoice_history = [
+        {
+            "invoice_id": invoice.invoice_id,
+            "repairing_device_id": invoice.repairing_device.id,
+            "customer_name": invoice.customer_name,
+            "repairing_cost": invoice.repairing_cost,
+            "advance_payment": invoice.advance_payment,
+            "due_price": invoice.due_price,
+            "bill_status": invoice.bill_status,
+            "payment_method": invoice.payment_method,
+            "created_at": invoice.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            "shop_details": {
+                "shop_id": invoice.shop.id,
+                "shop_name": invoice.shop.name,
+                "shop_address": invoice.shop.address,
+                "shop_phone": invoice.shop.phone,
+                "shop_email": invoice.shop.email,
+            }
+        }
+        for invoice in invoices
+    ]
+
+    # Return the history as JSON
+    return jsonify({"message": "Repairing invoice history retrieved successfully", "invoices": invoice_history}), 200
+    
+import requests
+
+@app.route('/generate_accessorie_invoice', methods=['GET'])
+def generate_accessorie_invoice():
+    # Check for authorization key
+    auth_key = request.args.get('auth_key')
+    if not auth_key or not verify_auth_key(auth_key):
+        return jsonify({"message": "Unauthorized access"}), 403
+
+    # Extract parameters from the query string
+    user_name = request.args.get("user_name")
+    user_phone = request.args.get("user_phone")
+    accessory_id = request.args.get("accessory_id")
+    shop_id = request.args.get("shop_id")
+    quantity = request.args.get("quantity")
+
+    # Validation
+    if not all([user_name, user_phone, accessory_id, shop_id, quantity]):
+        return jsonify({"error": "All fields are required"}), 400
+
+    try:
+        # Convert quantity to integer
+        quantity = int(quantity)
+
+        # Fetch accessory details from the database
+        accessory = Accessory.query.get(accessory_id)
+        if not accessory:
+            return jsonify({"error": "Accessory not found"}), 404
+
+        # Fetch shop details from the database
+        shop = Shop.query.get(shop_id)
+        if not shop:
+            return jsonify({"error": "Shop not found"}), 404
+
+        # Check stock availability
+        if accessory.added_stock < quantity:
+            return jsonify({"error": "Insufficient stock available"}), 400
+
+        # Generate unique invoice ID
+        invoice_id = str(uuid.uuid4())
+
+        # Calculate total price
+        total_price = accessory.unit_price * quantity
+
+        # Update stock and sales details
+        accessory.added_stock -= quantity
+        accessory.times_sold += quantity
+        db.session.commit()
+
+        # Save invoice to the database
+        new_invoice = AccessorieInvoice(
+            invoice_id=invoice_id,
+            user_name=user_name,
+            user_phone=user_phone,
+            accessory_name=accessory.accessory_name,
+            company=accessory.company,
+            category=accessory.category,
+            unit_price=accessory.unit_price,
+            quantity=quantity,
+            total_price=total_price,
+            shop_name=shop.name,
+            shop_address=shop.address,
+            shop_phone=shop.phone,
+            shop_email=shop.email,
+        )
+        db.session.add(new_invoice)
+        db.session.commit()
+
+        # Prepare invoice data for response
+        invoice_data = {
+            "invoice_id": invoice_id,
+            "user_name": user_name,
+            "user_phone": user_phone,
+            "accessory_details": {
+                "accessory_name": accessory.accessory_name,
+                "company": accessory.company,
+                "category": accessory.category,
+                "unit_price": accessory.unit_price,
+                "quantity": quantity,
+                "total_price": total_price,
+            },
+            "shop_details": {
+                "shop_name": shop.name,
+                "shop_address": shop.address,
+                "shop_phone": shop.phone,
+                "shop_email": shop.email,
+            },
+            "date": datetime.utcnow().isoformat(),
+        }
+
+        # Make an API call to update the accessory
+        update_url = "http://localhost:5000/accessory"
+        update_params = {
+            "action": "update",
+            "auth_key": auth_key,
+            "id": accessory_id,
+            "last_purchase_quantity": quantity
+        }
+
+        try:
+            response = requests.get(update_url, params=update_params)
+            if response.status_code != 200:
+                return jsonify({"error": "Failed to update accessory"}), response.status_code
+        except Exception as e:
+            return jsonify({"error": f"Failed to update accessory: {str(e)}"}), 500
+
+        return jsonify({"status": "success", "invoice": invoice_data}), 200
+
+    except ValueError:
+        return jsonify({"error": "Invalid quantity format"}), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+    
+    
 
 # Run the application
 if __name__ == '__main__':
